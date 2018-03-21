@@ -13,6 +13,7 @@ register_deactivation_hook( __FILE__, 'wc_yotpo_deactivate' );
 add_action('plugins_loaded', 'wc_yotpo_init');
 add_action('init', 'wc_yotpo_redirect');
 add_action( 'woocommerce_order_status_changed', 'wc_yotpo_map');
+add_shortcode( 'yotpo_show_widget','wc_yotpo_show_widget_shortcode' );
 		
 function wc_yotpo_init() {
 	$is_admin = is_admin();	
@@ -114,6 +115,19 @@ function wc_yotpo_show_widget() {
 	  				data-lang='".$product_data['lang']."'></div>";
 		echo $yotpo_div;
 	}						
+}
+
+function wc_yotpo_show_widget_shortcode() {		 
+	$product = get_product();	
+		$product_data = wc_yotpo_get_product_data($product);	
+		$yotpo_div = "<div class='yotpo yotpo-main-widget'
+	   				data-product-id='".$product_data['id']."'
+	   				data-name='".$product_data['title']."' 
+	   				data-url='".$product_data['url']."' 
+	   				data-image-url='".$product_data['image-url']."' 
+	  				data-description='".$product_data['description']."' 
+	  				data-lang='".$product_data['lang']."'></div>";
+		return $yotpo_div;						
 }
 
 function wc_yotpo_show_widget_in_tab($tabs) {
