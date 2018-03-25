@@ -141,7 +141,7 @@ class Yotpo_Review_Export
     }
     
     private function getFirstWords($content = '', $number_of_words = 5) {
-    	$words = str_word_count($content,1);
+    	$words = explode(' ',$content);
     	if(count($words) > $number_of_words) {
     		return join(" ",array_slice($words, 0, $number_of_words));
     	}
