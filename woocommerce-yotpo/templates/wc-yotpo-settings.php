@@ -67,9 +67,8 @@ function wc_display_yotpo_settings($success_type = false) {
 	                 		                  							   </tr>" : '';
     $submit_past_orders_button = $yotpo_settings['show_submit_past_orders'] ? "<input type='submit' name='yotpo_past_orders' value='Submit past orders' class='button-secondary past-orders-btn' " . disabled(true, empty($app_key) || empty($secret), false) . ">" : '';
 
-    $settings_html = "<div class='wrap'>"
-            . screen_icon() .
-            "<h2>Yotpo Settings</h2>						  
+    $settings_html = "<div class='wrap'>
+              <h2>Yotpo Settings</h2>						  
 			  <h4>To customize the look and feel of the widget, and to edit your Mail After Purchase settings, just head to the " . $dashboard_link . "</h4>
 			  <form  method='post' id='yotpo_settings_form'>
 			  	<table class='form-table'>" .
@@ -184,9 +183,8 @@ function wc_proccess_yotpo_settings() {
 function wc_display_yotpo_register() {
     $email = isset($_POST['yotpo_user_email']) ? $_POST['yotpo_user_email'] : '';
     $user_name = isset($_POST['yotpo_user_name']) ? $_POST['yotpo_user_name'] : '';
-    $register_html = "<div class='wrap'>"
-            . screen_icon() .
-            "<h2>Yotpo Registration</h2>
+    $register_html = "<div class='wrap'>
+    <h2>Yotpo Registration</h2>
 		<form method='post'>
 		<table class='form-table'>"
             . wp_nonce_field('yotpo_registration_form') .
