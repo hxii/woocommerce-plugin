@@ -138,11 +138,10 @@ function wc_yotpo_load_js(){
 }
 
 function wc_yotpo_is_who_commerce_installed() {
-    $wooVer =  WooCommerce::plugin_path();
+    $wooVer =  WC()->plugin_path();
     $findme   = "plugins";
     $pos = strpos($wooVer, $findme)+8;
     $pluginCheck =  substr($wooVer, $pos).'/woocommerce.php';
-    $string = WooCommerce::plugin_path();
     return in_array($pluginCheck, apply_filters('active_plugins', get_option('active_plugins')));
 }
 
