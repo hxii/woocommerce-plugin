@@ -241,13 +241,15 @@ function wc_yotpo_get_single_map_data($order_id) {
 	if(!is_null($order->id)) {
 		$data = array();
 		$data['order_date'] = $order->order_date;
-		$data['email'] = $order->billing_email;
-		$data['customer_name'] = $order->billing_first_name.' '.$order->billing_last_name;
+		if (!empty($order->billing_email)) { $data['email'] = $order->billing_email; } else { return; }
+		if (!empty($order->billing_first_name)) { $data['customer_name'] = $order->billing_first_name.' '.$order->billing_last_name; } else { return; }
 		$data['order_id'] = $order_id;
 		$data['currency_iso'] = wc_yotpo_get_order_currency($order);
 		$products_arr = array();
+		if(empty($order->get_items())) { return; }
 		foreach ($order->get_items() as $product) 
 		{
+			if ($product['product_id'] == "0") { return; }
                     $_product = wc_get_product($product['product_id']);
                     if(is_object($_product)){
                         $product_data = array();   
