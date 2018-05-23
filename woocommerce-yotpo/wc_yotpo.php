@@ -239,9 +239,9 @@ function wc_yotpo_get_single_map_data($order_id) {
 	$data = null;
 	if(!is_null($order->id)) {
 		$data = array();
-		$data['order_date'] = $order->order_date;
-		$data['email'] = $order->billing_email;
-		$data['customer_name'] = $order->billing_first_name.' '.$order->billing_last_name;
+		$data['order_date'] = $order->get_date_created();
+		$data['email'] = $order->get_billing_email();
+		$data['customer_name'] = $order->get_billing_first_name().' '.$order->get_billing_last_name();
 		$data['order_id'] = $order_id;
 		$data['currency_iso'] = wc_yotpo_get_order_currency($order);
 		$products_arr = array();
@@ -433,8 +433,8 @@ function wc_yotpo_get_order_currency($order) {
 	if(is_null($order) || !is_object($order)) {
 		return '';
 	}
-	if(method_exists($order,'get_order_currency')) { 
-		return $order->get_order_currency();
+	if(method_exists($order,'get_currency')) { 
+		return $order->get_currency();
 	}
 	if(isset($order->order_custom_fields) && isset($order->order_custom_fields['_order_currency'])) {		
  		if(is_array($order->order_custom_fields['_order_currency'])) {
