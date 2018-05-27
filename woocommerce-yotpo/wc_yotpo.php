@@ -138,7 +138,7 @@ function wc_yotpo_show_rs() {
 		$avg = $data->response->bottomline->average_score ?: 0;
 		$total = $data->response->bottomline->total_reviews ?: 0;
 		$rs = '
-			<script type="application/ld+json">
+			<script type="application/ld+json" class="y-richsnippet">
 				{
 				    "@context": "http://schema.org",
 				    "@graph": [
