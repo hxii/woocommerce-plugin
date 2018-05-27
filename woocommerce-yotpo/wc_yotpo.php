@@ -132,8 +132,8 @@ function wc_yotpo_show_rs() {
 	$yotpo_settings = get_option('yotpo_settings', wc_yotpo_get_degault_settings());
 	$app_key = $yotpo_settings['app_key'];
 	$url = 'https://api.yotpo.com/products/'.$app_key.'/'.$id.'/bottomline';
-	$json = (get_headers($url) == "HTTP/1.1 200 OK") ? file_get_contents($url) : null;
-	if (!is_null($json)) {$data = json_decode($json);};
+	$json = (get_headers($url)[0] == "HTTP/1.1 200 OK") ? file_get_contents($url) : null;
+	if (!is_null($json)) {$data = json_decode($json);}
 	if (!is_null($data) && $data->status->code == 200) {
 		$avg = $data->response->bottomline->average_score ?: 0;
 		$total = $data->response->bottomline->total_reviews ?: 0;
