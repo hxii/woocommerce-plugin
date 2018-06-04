@@ -108,8 +108,8 @@ function wc_yotpo_uninstall() {
 }
 
 function wc_yotpo_show_widget() {		 
-	$product = get_product();
-	if($product->post->comment_status == 'open') {		
+	global $product;
+	if($product->get_reviews_allowed() == true) {		
 		$product_data = wc_yotpo_get_product_data($product);	
 		$yotpo_div = "<div class='yotpo yotpo-main-widget'
 	   				data-product-id='".$product_data['id']."'
@@ -185,8 +185,8 @@ function wc_yotpo_show_rs() {
 }
 
 function wc_yotpo_show_widget_in_tab($tabs) {
-	$product = get_product();
-	if($product->post->comment_status == 'open') {
+	global $product;
+	if($product->get_reviews_allowed() == true) {
 		$settings = get_option('yotpo_settings', wc_yotpo_get_degault_settings());
 	 	$tabs['yotpo_widget'] = array(
 	 	'title' => $settings['widget_tab_name'],
@@ -206,24 +206,23 @@ function wc_yotpo_load_js(){
 }
 
 function wc_yotpo_is_who_commerce_installed() {
-    $wooVer =  WooCommerce::plugin_path();
+    $wooVer =  WC()->plugin_path();
     $findme   = "plugins";
     $pos = strpos($wooVer, $findme)+8;
     $pluginCheck =  substr($wooVer, $pos).'/woocommerce.php';
-    $string = WooCommerce::plugin_path();
     return in_array($pluginCheck, apply_filters('active_plugins', get_option('active_plugins')));
 }
 
 function wc_yotpo_show_qa_bottomline() {
-    $product_data = wc_yotpo_get_product_data(get_product());
+    $product_data = wc_yotpo_get_product_data(wc_get_product());
     echo "<div class='yotpo QABottomLine'
          data-appkey='".$product_data['app_key']."'
          data-product-id='".$product_data['id']."'></div>";
 }
 
 function wc_yotpo_show_buttomline() {
-	$product = get_product();
-	$show_bottom_line = is_product() ? $product->post->comment_status == 'open' : true;
+	global $product;
+	$show_bottom_line = is_product() ? $product->get_reviews_allowed() == true : true;
 	if($show_bottom_line) {
 		$product_data = wc_yotpo_get_product_data($product);	
 		$yotpo_div = "<div class='yotpo bottomLine' 
@@ -253,7 +252,7 @@ function wc_yotpo_get_product_data($product) {
 	$settings = get_option('yotpo_settings',wc_yotpo_get_degault_settings());
 	$product_data['app_key'] = $settings['app_key'];
 	$product_data['shop_domain'] = wc_yotpo_get_shop_domain(); 
-	$product_data['url'] = get_permalink($product->id);
+	$product_data['url'] = get_permalink($product->get_id());
 	$product_data['lang'] = $settings['language_code']; 
 	if($settings['yotpo_language_as_site'] == true) {
 		$lang = explode('-', get_bloginfo('language'));
@@ -263,10 +262,10 @@ function wc_yotpo_get_product_data($product) {
 			$product_data['lang'] = $lang[0];	
 		}		
 	}
-	$product_data['description'] = strip_tags($product->get_post_data()->post_excerpt);
-	$product_data['id'] = $product->id;	
+	$product_data['description'] = strip_tags($product->get_description());
+	$product_data['id'] = $product->get_id();	
 	$product_data['title'] = $product->get_title();
-	$product_data['image-url'] = wc_yotpo_get_product_image_url($product->id);
+	$product_data['image-url'] = wc_yotpo_get_product_image_url($product->get_id());
         $specs_data = array();
             if($product->get_sku()){ $specs_data['external_sku'] =$product->get_sku();} 
             if($product->get_attribute('upc')){ $specs_data['upc'] =$product->get_attribute('upc');} 
@@ -320,7 +319,7 @@ function wc_yotpo_get_single_map_data($order_id) {
 	$data = null;
 	if(!is_null($order->id)) {
 		$data = array();
-		$data['order_date'] = $order->order_date;
+		$data['order_date'] = date('Y-m-d H:i:s', strtotime($order->get_date_created()));
 		if (!empty($order->billing_email)) { $data['email'] = $order->billing_email; } else { return; }
 		if (!empty($order->billing_first_name)) { $data['customer_name'] = $order->billing_first_name.' '.$order->billing_last_name; } else { return; }
 		$data['order_id'] = $order_id;
@@ -519,8 +518,8 @@ function wc_yotpo_get_order_currency($order) {
 	if(is_null($order) || !is_object($order)) {
 		return '';
 	}
-	if(method_exists($order,'get_order_currency')) { 
-		return $order->get_order_currency();
+	if(method_exists($order,'get_currency')) { 
+		return $order->get_currency();
 	}
 	if(isset($order->order_custom_fields) && isset($order->order_custom_fields['_order_currency'])) {		
  		if(is_array($order->order_custom_fields['_order_currency'])) {
