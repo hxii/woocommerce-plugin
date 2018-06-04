@@ -14,6 +14,8 @@ add_action('plugins_loaded', 'wc_yotpo_init');
 add_action('init', 'wc_yotpo_redirect');
 add_action( 'woocommerce_order_status_changed', 'wc_yotpo_map');
 add_action('rating_sync_hook', 'wc_yotpo_update_product_ratings');
+add_shortcode( 'yotpo_show_widget','wc_yotpo_show_widget_shortcode' );
+add_shortcode( 'yotpo_show_bottomline','wc_yotpo_show_buttomline_shortcode' );
 		
 function wc_yotpo_init() {
 	$is_admin = is_admin();	
@@ -73,7 +75,10 @@ function wc_yotpo_front_end_init() {
 		if($settings['bottom_line_enabled_product']) {	
 			add_action('woocommerce_single_product_summary', 'wc_yotpo_show_buttomline',7);	
 			wp_enqueue_style('yotpoSideBootomLineStylesheet', plugins_url('assets/css/bottom-line.css', __FILE__));
-		}			
+		}
+		if($settings['rich_snippets_enabled']) {
+			add_action('woocommerce_before_single_product', 'wc_yotpo_show_rs', 5);
+		}
 	}
 	 elseif ($settings['bottom_line_enabled_category']) {
         add_action('woocommerce_after_shop_loop_item', 'wc_yotpo_show_buttomline', 7);
@@ -115,6 +120,68 @@ function wc_yotpo_show_widget() {
 	  				data-lang='".$product_data['lang']."'></div>";
 		echo $yotpo_div;
 	}						
+}
+
+function wc_yotpo_show_widget_shortcode() {		 
+	if (is_product()) {
+		$product = get_product();	
+		$product_data = wc_yotpo_get_product_data($product);	
+		$yotpo_div = "<div class='yotpo yotpo-main-widget'
+	   				data-product-id='".$product_data['id']."'
+	   				data-name='".$product_data['title']."' 
+	   				data-url='".$product_data['url']."' 
+	   				data-image-url='".$product_data['image-url']."' 
+	  				data-description='".$product_data['description']."' 
+	  				data-lang='".$product_data['lang']."'></div>";
+		return $yotpo_div;		
+	}				
+}
+function wc_yotpo_show_rs() {
+	global $product;
+	// var_dump($product);
+	$id = $product->get_id();
+	$title = $product->get_title();
+	$description = addslashes(wpautop( do_shortcode( $product->get_short_description() ? $product->get_short_description() : $product->get_description() ) ) );
+	$availability = 'https://schema.org/' . ( $product->is_in_stock() ? 'InStock' : 'OutOfStock' );
+	$price = $product->get_price();
+	$currency = get_woocommerce_currency();
+	$sku = $product->get_sku();
+	$yotpo_settings = get_option('yotpo_settings', wc_yotpo_get_degault_settings());
+	$app_key = $yotpo_settings['app_key'];
+	$url = 'https://api.yotpo.com/products/'.$app_key.'/'.$id.'/bottomline';
+	$json = (get_headers($url)[0] == "HTTP/1.1 200 OK") ? file_get_contents($url) : null;
+	if (!is_null($json)) {$data = json_decode($json);}
+	if (!is_null($data) && $data->status->code == 200) {
+		$avg = $data->response->bottomline->average_score ?: 0;
+		$total = $data->response->bottomline->total_reviews ?: 0;
+		$rs = '
+			<script type="application/ld+json" class="y-richsnippet">
+				{
+				    "@context": "http://schema.org",
+				    "@graph": [
+				        {
+				            "@type": "Product",
+				            "name": "'.$title.'",
+				            "sku": "'.$sku.'",
+				            "itemCondition": "http://schema.org/NewCondition",
+				            "description": "'.$description.'",
+				            "offers": {
+				                "@type": "Offer",
+				                "availability": "'.$availability.'",
+				                "price": "'.$price.'",
+				                "priceCurrency": "'.$currency.'"
+				            },
+				            "aggregateRating": {
+				                "@type": "AggregateRating",
+				                "ratingValue": "'.$avg.'",
+				                "reviewCount": "'.$total.'"
+				            }
+						}
+					]
+				}
+			</script>';
+		echo $rs;
+	}
 }
 
 function wc_yotpo_show_widget_in_tab($tabs) {
@@ -166,6 +233,18 @@ function wc_yotpo_show_buttomline() {
 		echo $yotpo_div;	
 	}	
 				
+}
+
+function wc_yotpo_show_buttomline_shortcode() {
+	if (is_product()) {
+		$product = get_product();
+		$product_data = wc_yotpo_get_product_data($product);	
+		$yotpo_div = "<div class='yotpo bottomLine' 
+	   				data-product-id='".$product_data['id']."'
+	   				data-url='".$product_data['url']."' 
+	   				data-lang='".$product_data['lang']."'></div>";
+		return $yotpo_div;		
+	}		
 }
 
 function wc_yotpo_get_product_data($product) {	
@@ -242,13 +321,15 @@ function wc_yotpo_get_single_map_data($order_id) {
 	if(!is_null($order->id)) {
 		$data = array();
 		$data['order_date'] = $order->order_date;
-		$data['email'] = $order->billing_email;
-		$data['customer_name'] = $order->billing_first_name.' '.$order->billing_last_name;
+		if (!empty($order->billing_email)) { $data['email'] = $order->billing_email; } else { return; }
+		if (!empty($order->billing_first_name)) { $data['customer_name'] = $order->billing_first_name.' '.$order->billing_last_name; } else { return; }
 		$data['order_id'] = $order_id;
 		$data['currency_iso'] = wc_yotpo_get_order_currency($order);
 		$products_arr = array();
+		if(empty($order->get_items())) { return; }
 		foreach ($order->get_items() as $product) 
 		{
+			if ($product['product_id'] == "0") { return; }
                     $_product = wc_get_product($product['product_id']);
                     if(is_object($_product)){
                         $product_data = array();   
@@ -278,6 +359,7 @@ function wc_yotpo_get_product_image_url($product_id) {
 }
 
 function wc_yotpo_get_past_orders() {
+	$yotpo_settings = get_option('yotpo_settings', wc_yotpo_get_degault_settings());
 	$result = null;
 	$args = array(
 		'post_type'		 => 'shop_order',
@@ -285,7 +367,7 @@ function wc_yotpo_get_past_orders() {
 	);
 
 	if (defined('WC_VERSION') && (version_compare(WC_VERSION, '2.2.0') >= 0)) {
-		$args['post_status'] = 'wc-completed';
+		$args['post_status'] = $yotpo_settings['yotpo_order_status'];
 	} else {
 		$args['tax_query'] = array(
 			array(
@@ -399,6 +481,7 @@ function wc_yotpo_get_degault_settings() {
         'widget_tab_name' => 'Reviews',
         'bottom_line_enabled_product' => true,
         'bottom_line_enabled_category' => false,
+        'rich_snippets_enabled' => false,
         'yotpo_language_as_site' => true,
         'show_submit_past_orders' => true,
         'yotpo_order_status' => 'wc-completed',
