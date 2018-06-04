@@ -115,7 +115,11 @@ function wc_display_yotpo_settings($success_type = false) {
 		   		     </tr>	
 		   		     <tr valign='top'>
 		   		       <th scope='row'><p class='description'>Yotpo's Bottom Line shows the star rating of the product and the number of reviews for the product. <a href='http://support.yotpo.com/entries/24467793-What-is-the-Yotpo-Bottomline-' target='_blank'>learn more.</a></p></th>		   		       
-		   		     </tr>				 	 
+		   		     </tr>
+					 <tr valign='top'>
+						<th scope='row'><label for='rating_sync'>Sync product ratings</label></th>
+						<td><input type='checkbox' name='rating_sync' value='1' " . checked(1, $yotpo_settings['rating_sync'], false) . " /></td>
+						</tr>
 					 <tr valign='top'>
 		   		       <th scope='row'><div>Enable bottom line in product page:</div></th>
 		   		       <td><input type='checkbox' name='yotpo_bottom_line_enabled_product' value='1' " . checked(1, $yotpo_settings['bottom_line_enabled_product'], false) . " /></td>
@@ -176,7 +180,8 @@ function wc_proccess_yotpo_settings() {
         'yotpo_order_status' => $_POST['yotpo_order_status'],
         'yotpo_language_as_site' => isset($_POST['yotpo_language_as_site']) ? true : false,
         'disable_native_review_system' => isset($_POST['disable_native_review_system']) ? true : false,
-        'show_submit_past_orders' => $current_settings['show_submit_past_orders']);
+        'show_submit_past_orders' => $current_settings['show_submit_past_orders'],
+		'rating_sync' => isset($_POST['rating_sync']) ? true : false);
     update_option('yotpo_settings', $new_settings);
     if ($current_settings['disable_native_review_system'] != $new_settings['disable_native_review_system']) {
         if ($new_settings['disable_native_review_system'] == false) {
@@ -185,6 +190,11 @@ function wc_proccess_yotpo_settings() {
             update_option('woocommerce_enable_review_rating', 'no');
         }
     }
+	if ($new_settings['rating_sync'] == true && !wp_next_scheduled('rating_sync_hook')) {
+		wp_schedule_event( time(), 'daily', 'rating_sync_hook' );
+	} elseif ($new_settings['rating_sync'] == false && wp_next_scheduled('rating_sync_hook')) {
+		wp_clear_scheduled_hook('rating_sync_hook');
+	}
 }
 
 function wc_display_yotpo_register() {

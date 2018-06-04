@@ -13,6 +13,7 @@ register_deactivation_hook( __FILE__, 'wc_yotpo_deactivate' );
 add_action('plugins_loaded', 'wc_yotpo_init');
 add_action('init', 'wc_yotpo_redirect');
 add_action( 'woocommerce_order_status_changed', 'wc_yotpo_map');
+add_action('rating_sync_hook', 'wc_yotpo_update_product_ratings');
 add_shortcode( 'yotpo_show_widget','wc_yotpo_show_widget_shortcode' );
 add_shortcode( 'yotpo_show_bottomline','wc_yotpo_show_buttomline_shortcode' );
 		
@@ -485,7 +486,8 @@ function wc_yotpo_get_degault_settings() {
         'show_submit_past_orders' => true,
         'yotpo_order_status' => 'wc-completed',
         'disable_native_review_system' => true,
-        'native_star_ratings_enabled' => 'no');
+        'native_star_ratings_enabled' => 'no',
+		'rating_sync' => false);
 }
 
 function wc_yotpo_admin_styles($hook) {
@@ -526,4 +528,32 @@ function wc_yotpo_get_order_currency($order) {
  		}	
 	}
 	return '';
+}
+
+function wc_yotpo_get_product_rating($product) {
+	$settings = get_option('yotpo_settings', wc_yotpo_get_degault_settings());
+	$app_key = $settings['app_key'];
+	$url = 'https://api.yotpo.com/products/'.$app_key.'/'.$product.'/bottomline';
+	$json = (get_headers($url)[0] == "HTTP/1.1 200 OK") ? file_get_contents($url) : null;
+	if (!is_null($json)) {$data = json_decode($json);} else { return 0; }
+	if (!is_null($data) && $data->status->code == 200) {
+		return $data->response->bottomline->average_score ?: 0;
+	}
+}
+
+function wc_yotpo_update_product_ratings(){
+	$args = array(
+		'post_type' => 'product',
+		'post_status'    => 'publish',
+		'posts_per_page'    => -1
+	);
+	$products = new WP_Query( $args );
+	if ( $products->have_posts() ) {
+		while ( $products->have_posts() ) : $products->the_post();
+		global $product;
+		$product->set_average_rating(wc_yotpo_get_product_rating($product->get_id()));
+		$data_store = $product->get_data_store();
+		$data_store->update_average_rating($product);
+		endwhile;
+	}
 }
