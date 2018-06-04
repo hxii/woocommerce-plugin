@@ -99,30 +99,32 @@ class Yotpo_Review_Export
 
     protected function getAllReviews() {   
     	global $wpdb;
-		$query = "SELECT comment_post_ID AS product_id, 
+		$query = "SELECT DISTINCT comment_post_ID AS product_id, 
 						 comment_author AS display_name, 
 						 comment_date AS date,
-						 comment_author_email AS user_email, 
+						 comment_author_email AS user_email,
+						 IF (pm.meta_key IN ( '_billing_email', '_customer_user' ), 'verified_buyer', 'anonymous') AS user_type,
 						 comment_content AS review_content, 
-						 meta_value AS review_score,
+						 cm.meta_value AS review_score,
 						 post_content AS product_description,
 						 post_title AS product_title,
 						 user_id
 				  FROM `".$wpdb->prefix."comments` 
-				  INNER JOIN `".$wpdb->prefix."posts` ON `".$wpdb->prefix."posts`.`ID` = `".$wpdb->prefix."comments`.`comment_post_ID` 
-				  INNER JOIN `".$wpdb->prefix."commentmeta` ON `".$wpdb->prefix."commentmeta`.`comment_id` = `".$wpdb->prefix."comments`.`comment_ID` 
-				  WHERE `post_type` = 'product' AND meta_key='rating'";
+				  INNER JOIN `".$wpdb->posts."` AS p ON p.`ID` = `".$wpdb->prefix."comments`.`comment_post_ID` 
+				  INNER JOIN `".$wpdb->prefix."commentmeta` AS cm ON `cm`.`comment_id` = `".$wpdb->prefix."comments`.`comment_ID`
+                  LEFT JOIN `".$wpdb->postmeta."` AS pm ON comment_author_email = pm.meta_value
+				  WHERE `post_type` = 'product' AND cm.meta_key='rating'
+                  ";
 		$results = $wpdb->get_results($query);
 		$all_reviews = array();
 		foreach ($results as $value) {
-			$product_instance = get_product($value->product_id);
 			$current_review = array();	
 			$review_content = $this->cleanContent($value->review_content);	
 			$current_review['review_title'] = $this->getFirstWords($review_content);
 			$current_review['review_content'] = $review_content;
 			$current_review['display_name'] = $this->cleanContent($value->display_name);
 			$current_review['user_email'] = $value->user_email;
-			$current_review['user_type'] = woocommerce_customer_bought_product($value->user_email, $value->user_id, $value->product_id) ? 'verified_buyer' : '';
+			$current_review['user_type'] = $value->user_type;
 			$current_review['review_score'] = $value->review_score;
 			$current_review['date'] = $value->date;
 			$current_review['sku'] = $value->product_id;
