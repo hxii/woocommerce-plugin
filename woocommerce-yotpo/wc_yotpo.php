@@ -3,7 +3,7 @@
 	Plugin Name: Yotpo Social Reviews for Woocommerce
 	Description: Yotpo Social Reviews helps Woocommerce store owners generate a ton of reviews for their products. Yotpo is the only solution which makes it easy to share your reviews automatically to your social networks to gain a boost in traffic and an increase in sales.
 	Author: Yotpo
-	Version: 1.1.7
+	Version: 1.1.7a
 	Author URI: http://www.yotpo.com?utm_source=yotpo_plugin_woocommerce&utm_medium=plugin_page_link&utm_campaign=woocommerce_plugin_page_link	
 	Plugin URI: http://www.yotpo.com?utm_source=yotpo_plugin_woocommerce&utm_medium=plugin_page_link&utm_campaign=woocommerce_plugin_page_link
  */
@@ -138,7 +138,6 @@ function wc_yotpo_show_widget_shortcode() {
 }
 function wc_yotpo_show_rs() {
 	global $product;
-	// var_dump($product);
 	$id = $product->get_id();
 	$title = $product->get_title();
 	$description = addslashes(wpautop( do_shortcode( $product->get_short_description() ? $product->get_short_description() : $product->get_description() ) ) );
@@ -150,7 +149,7 @@ function wc_yotpo_show_rs() {
 	$app_key = $yotpo_settings['app_key'];
 	$url = 'https://api.yotpo.com/products/'.$app_key.'/'.$id.'/bottomline';
 	$json = (get_headers($url)[0] == "HTTP/1.1 200 OK") ? file_get_contents($url) : null;
-	if (!is_null($json)) {$data = json_decode($json);}
+	if (!is_null($json)) {$data = json_decode($json);} else { return; }
 	if (!is_null($data) && $data->status->code == 200) {
 		$avg = $data->response->bottomline->average_score ?: 0;
 		$total = $data->response->bottomline->total_reviews ?: 0;
