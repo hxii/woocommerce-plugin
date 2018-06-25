@@ -343,7 +343,7 @@ function wc_yotpo_get_single_map_data($order_id) {
                         if($_product->get_attribute('brand')){ $specs_data['brand'] = $_product->get_attribute('brand');} 
                         if($_product->get_attribute('mpn')){ $specs_data['mpn'] =$_product->get_attribute('mpn');} 
                         if(!empty($specs_data)){ $product_data['specs'] = $specs_data;  }
-                    }
+                    } else { return; }
 			$products_arr[$product['product_id']] = $product_data;	
 		}	
 		$data['products'] = $products_arr;
