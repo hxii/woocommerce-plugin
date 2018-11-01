@@ -2,8 +2,8 @@
 Contributors: Yotpo
 Tags: reviews, social reviews, woocommerce, woocommerce reviews, woocommerce product reviews, woocommerce extensions, woocommerce plugins, woocommerce addons, woocommerce add-ons, yotpo, yotpo reviews, yotpo social reviews
 Requires at least: 3.5.1
-Tested up to: 4.9.1
-Stable tag: 1.1.6
+Tested up to: 4.9.8
+Stable tag: 1.1.8
 License: GPLv2
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -43,6 +43,7 @@ http://www.youtube.com/watch?v=5yo6NVRm6mw
 
 * WordPress 3.5.1 or greater
 * PHP version 5.2.0 or greater
+* WooCommerce 3.0 or greater
 
 1. Install Yotpo Social Reviews either via the WordPress.org plugin directory, or by uploading the files to your server
 2. After activating Yotpo Social Reviews, click on the Yotpo link in the left hand side bar of your Wordpress admin.
@@ -139,4 +140,14 @@ Yes. To connect your social accounts to Yotpo, just log into yotpo.com, and clic
 * Fixed "review export" method on Yotpo's integration page.
 
 = 1.1.7 - 13/02/2018 =
-* Reverted default order status to 'Completed'
+* Reverted default order status to 'Completed'
+
+= 1.1.8 - 13/10/2018 =
+* Added support for:
+  * Wordpress Version 4.9.8
+  * Woocommerce Version 3.5.0
+  * Price & currency metadata in widget for Rich Snippets.
+  * Custom order status into account when retrieving past orders.
+  * Q&A bottom line in storefront and Yotpo settings.
+ * Bug fixes.
+  
