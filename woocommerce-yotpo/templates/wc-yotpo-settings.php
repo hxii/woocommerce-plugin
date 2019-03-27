@@ -1,5 +1,4 @@
 <?php
-define("LOG_FILE", plugin_dir_path( __FILE__ ).'../yotpo_debug.log');
 function wc_display_yotpo_admin_page() {
     if (function_exists('current_user_can') && !current_user_can('manage_options')) {
         die(__(''));
@@ -22,13 +21,8 @@ function wc_display_yotpo_admin_page() {
         } elseif (isset($_POST['yotpo_past_orders'])) {
             wc_yotpo_send_past_orders();
             wc_display_yotpo_settings();
-        } elseif (isset($_POST['yotdbg-clear'])) {
-            check_admin_referer('yotdbg-clear');
-            $filename = LOG_FILE;
-            file_put_contents($filename, "");
-            wc_display_yotpo_settings();
         } else {
-            $yotpo_settings = get_option('yotpo_settings', wc_yotpo_get_degault_settings());
+            $yotpo_settings = get_option('yotpo_settings', wc_yotpo_get_default_settings());
             if (empty($yotpo_settings['app_key']) && empty($yotpo_settings['secret'])) {
                 wc_display_yotpo_register();
             } else {
@@ -36,8 +30,8 @@ function wc_display_yotpo_admin_page() {
             }
         }
     } else {
-        if (version_compare(phpversion(), '5.2.0') < 0) {
-            echo '<h1>Yotpo plugin requires PHP 5.2.0 above.</h1><br>';
+        if (version_compare(phpversion(), '5.6.0') < 0) {
+            echo '<h1>Yotpo plugin requires PHP 5.6.0 above.</h1><br>';
         }
         if (!function_exists('curl_init')) {
             echo '<h1>Yotpo plugin requires cURL library.</h1><br>';
@@ -45,7 +39,7 @@ function wc_display_yotpo_admin_page() {
     }
 }
 function wc_display_yotpo_settings($success_type = false) {
-    $yotpo_settings = get_option('yotpo_settings', wc_yotpo_get_degault_settings());
+    $yotpo_settings = get_option('yotpo_settings', wc_yotpo_get_default_settings());
     $app_key = $yotpo_settings['app_key'];
     $secret = $yotpo_settings['secret'];
     $language_code = $yotpo_settings['language_code'];
@@ -64,7 +58,7 @@ function wc_display_yotpo_settings($success_type = false) {
         $dashboard_link = "<a href='https://www.yotpo.com/?login=true$google_tracking_params' target='_blank'>Yotpo Dashboard.</a></div>";
     }
     $read_only = isset($_POST['log_in_button']) || $success_type == 'b2c' ? '' : 'readonly';
-    $cradentials_location_explanation = isset($_POST['log_in_button']) ? "<tr valign='top'>  	
+    $cradentials_location_explanation = isset($_POST['log_in_button']) ? "<tr valign='top'>
 		             														<th scope='row'><p class='description'>To get your api key and secret token <a href='https://www.yotpo.com/?login=true' target='_blank'>log in here</a> and go to your account settings.</p></th>
 	                 		                  							   </tr>" : '';
     $submit_past_orders_button = $yotpo_settings['show_submit_past_orders'] ? "<input type='submit' name='yotpo_past_orders' value='Submit past orders' class='button-secondary past-orders-btn' " . disabled(true, empty($app_key) || empty($secret), false) . ">" : '';
@@ -72,8 +66,13 @@ function wc_display_yotpo_settings($success_type = false) {
         $settings_dump = json_encode($yotpo_settings);
         if (file_exists(LOG_FILE)) { $debug_log = file_get_contents(LOG_FILE); } else { $debug_log = false; };
     }
-    $settings_html = "<div class='wrap'><h2>Yotpo Settings</h2>						  
+    $sched = ( wp_next_scheduled( 'yotpo_scheduled_submission' ) ) ? date("Y-m-d\TH:i:s\Z", wp_next_scheduled( 'yotpo_scheduled_submission' ) ) : false;
+    if ( $sched ) {
+		$sched = "<div class='notice notice-info'><p><strong>Next order submission is scheduled for $sched.</strong> Current time is " . date("Y-m-d\TH:i:s\Z") . ".</p></div>";
+  	}
+    $settings_html = "<div class='wrap'><h2>Yotpo Settings</h2>
 			  <h4>To customize the look and feel of the widget, and to edit your Mail After Purchase settings, just head to the " . $dashboard_link . "</h4>
+			  " . $sched . "
 			  <form  method='post' id='yotpo_settings_form'>
 			  	<table class='form-table'>" .
             wp_nonce_field('yotpo_settings_form') .
@@ -86,15 +85,15 @@ function wc_display_yotpo_settings($success_type = false) {
 	                 	<th scope='row'><div>If you would like to choose a set language, please type the 2-letter language code here. You can find the supported langauge codes <a class='y-href' href='http://support.yotpo.com/entries/21861473-Languages-Customization-' target='_blank'>here.</a></div></th>
 	                 	<td><div><input type='text' class='yotpo_language_code_text' name='yotpo_widget_language_code' maxlength='5' value='$language_code'/></div></td>
 	                 </tr>
-			  	     <tr valign='top'>  	
+			  	     <tr valign='top'>
 		             	<th scope='row'><div>For multiple-language sites, mark this check box. This will choose the language according to the user's site language.</div></th>
-	                 	<td><input type='checkbox' name='yotpo_language_as_site' value='1' " . checked(1, $yotpo_settings['yotpo_language_as_site'], false) . "/></td>	                  
+	                 	<td><input type='checkbox' name='yotpo_language_as_site' value='1' " . checked(1, $yotpo_settings['yotpo_language_as_site'], false) . "/></td>
 	                 </tr>
 					 <tr valign='top'>
 		   		       <th scope='row'><div>Disable native reviews system:</div></th>
 		   		       <td><input type='checkbox' name='disable_native_review_system' value='1' " . checked(1, $yotpo_settings['disable_native_review_system'], false) . " /></td>
-		   		     </tr>	                 	                 
-	    	         <tr valign='top'>			
+		   		     </tr>
+	    	         <tr valign='top'>
 				       <th scope='row'><div>Select widget location</div></th>
 				       <td>
 				         <select name='yotpo_widget_location' class='yotpo-widget-location'>
@@ -105,7 +104,7 @@ function wc_display_yotpo_settings($success_type = false) {
 		   		       </td>
 		   		     </tr>
 		   		     <tr valign='top' class='yotpo-widget-location-other-explain'>
-                 		<th scope='row'><p class='description'>In order to locate the widget in a custome location open 'wp-content/plugins/woocommerce/templates/content-single-product.php' and add the following line <code>wc_yotpo_show_widget();</code> in the requested location.</p></th>	                 																	
+                 		<th scope='row'><p class='description'>In order to locate the widget in a custome location open 'wp-content/plugins/woocommerce/templates/content-single-product.php' and add the following line <code>wc_yotpo_show_widget();</code> in the requested location.</p></th>
 	                 </tr>
 		   		     <tr valign='top' class='yotpo-widget-tab-name'>
 		   		       <th scope='row'><div>Select tab name:</div></th>
@@ -119,11 +118,11 @@ function wc_display_yotpo_settings($success_type = false) {
 					 <tr valign='top'>
 		   		       <th scope='row'><div>Secret token:</div></th>
 		   		       <td><div class='y-input'><input id='secret' type='text'  name='yotpo_oauth_token' value='$secret' $read_only '/></div></td>
-		   		     </tr>				 	 
+		   		     </tr>
 					 <tr valign='top'>
 		   		       <th scope='row'><div>Enable bottom line in product page:</div></th>
 		   		       <td><input type='checkbox' name='yotpo_bottom_line_enabled_product' value='1' " . checked(1, $yotpo_settings['bottom_line_enabled_product'], false) . " /></td>
-		   		     </tr>					  	 
+		   		     </tr>
 					 <tr valign='top'>
 		   		       <th scope='row'><div>Enable Q&A bottom line in product page:</div></th>
 		   		       <td><input type='checkbox' name='yotpo_qna_enabled_product' value='1' " . checked(1, $yotpo_settings['qna_enabled_product'], false) . " />
@@ -131,10 +130,10 @@ function wc_display_yotpo_settings($success_type = false) {
 		   		     </tr>
  					 <tr valign='top'>
 		   		       <th scope='row'><div>Enable bottom line in category page:</div></th>
-		   		       <td><input type='checkbox' name='yotpo_bottom_line_enabled_category' value='1' " . checked(1, $yotpo_settings['bottom_line_enabled_category'], false) . " />		   		       
+		   		       <td><input type='checkbox' name='yotpo_bottom_line_enabled_category' value='1' " . checked(1, $yotpo_settings['bottom_line_enabled_category'], false) . " />
 		   		       </td>
 		   		     </tr>
-                                     </tr>					  	 
+                                     </tr>
 					 <tr valign='top'>
 		   		       <th scope='row'><div>Order Status:</div></th>
 		   		       <td>
@@ -149,8 +148,17 @@ function wc_display_yotpo_settings($success_type = false) {
 				         </select>
 		   		       </td>
 		   		     </tr>
+					  <tr valign='top'>
+		   		       <th scope='row'><div>Order Submission Method:</div></th>
+		   		       <td><select name='order_submission_method'>
+					   <option value='hook'" . selected('hook', $yotpo_settings['order_submission_method'], false) . ">Hook</option>
+					   <option value='schedule'" . selected('schedule', $yotpo_settings['order_submission_method'], false) . ">Scheduled (Beta)</option>
+		   		       </select>
+					   <p class='description'>'Hook' is the default method that is activated every time an order changes it's status.<br />
+					   'Scheduled' is activated twice a day (12 hour interval from the moment of activation) and submits all orders for that day.</p></td>
+		   		     </tr>
 		           </fieldset>
-		         </table></br>			  		
+		         </table></br>
 		         <div class='buttons-container'>
 		        <button type='button' id='yotpo-export-reviews' class='button-secondary' " . disabled(true, empty($app_key) || empty($secret), false) . ">Export Reviews</button>
 				<input type='submit' name='yotpo_settings' value='Update' class='button-primary' id='save_yotpo_settings'/>$submit_past_orders_button
@@ -161,35 +169,38 @@ function wc_display_yotpo_settings($success_type = false) {
 		  <form action='' method='get' target='yotpo_export_reviews_frame' style='display: none;'>
 			<input type='hidden' name='download_exported_reviews' value='true' />
 			<input type='submit' value='Export Reviews' class='button-primary' id='export_reviews_submit'/>
-		  </form> 		  		  
+		  </form>
 		</div>";
     echo $settings_html;
-    if (isset($yotpo_settings['debug_mode']) && $yotpo_settings['debug_mode']) {
-        echo '<h3>Settings</h3><pre>'.$settings_dump.'</pre>';
-        if ($debug_log === FALSE) {
-            echo '<h3>Yotpo Debug</h3>
-            <textarea cols=170 rows=15>Problem opening yotpo_debug.log and/or file is empty</textarea>';
-        } else {
-            echo '<h3>Yotpo Debug</h3><textarea cols=170 rows=15>'.$debug_log.'</textarea>
-            <form method="post" id="yotdbg-clear">' .wp_nonce_field('yotdbg-clear') .'<input type="submit" value="Clear" class="button-primary" name="yotdbg-clear" id="yotdbg-clear-submit"/></form>';
-        }
-    }
 }
 function wc_proccess_yotpo_settings() {
-    $current_settings = get_option('yotpo_settings', wc_yotpo_get_degault_settings());
-    $new_settings = array('app_key' => $_POST['yotpo_app_key'],
-        'secret' => $_POST['yotpo_oauth_token'],    
-        'widget_location' => $_POST['yotpo_widget_location'],
-        'language_code' => $_POST['yotpo_widget_language_code'],
-        'widget_tab_name' => $_POST['yotpo_widget_tab_name'],
-        'bottom_line_enabled_product' => isset($_POST['yotpo_bottom_line_enabled_product']) ? true : false,
-        'qna_enabled_product' => isset($_POST['yotpo_qna_enabled_product']) ? true : false,
+    $current_settings = get_option( 'yotpo_settings', wc_yotpo_get_default_settings() );
+    $new_settings = array(
+        'app_key'                      => $_POST['yotpo_app_key'],
+        'secret'                       => $_POST['yotpo_oauth_token'],
+        'widget_location'              => $_POST['yotpo_widget_location'],
+        'language_code'                => $_POST['yotpo_widget_language_code'],
+        'widget_tab_name'              => $_POST['yotpo_widget_tab_name'],
+        'bottom_line_enabled_product'  => isset($_POST['yotpo_bottom_line_enabled_product']) ? true : false,
+        'qna_enabled_product'          => isset($_POST['yotpo_qna_enabled_product']) ? true : false,
         'bottom_line_enabled_category' => isset($_POST['yotpo_bottom_line_enabled_category']) ? true : false,
-        'yotpo_order_status' => $_POST['yotpo_order_status'],
-        'yotpo_language_as_site' => isset($_POST['yotpo_language_as_site']) ? true : false,
+        'yotpo_order_status'           => $_POST['yotpo_order_status'],
+        'yotpo_language_as_site'       => isset($_POST['yotpo_language_as_site']) ? true : false,
         'disable_native_review_system' => isset($_POST['disable_native_review_system']) ? true : false,
-        'show_submit_past_orders' => $current_settings['show_submit_past_orders'],
-        'debug_mode' => isset($_POST['debug_mode']) ? true : false);
+        'show_submit_past_orders'      => $current_settings['show_submit_past_orders'],
+        'debug_mode'                   => isset($_POST['debug_mode']) ? true : false,
+		'main_widget_hook'             => $current_settings[ 'main_widget_hook' ] ?: 'woocommerce_after_single_product',
+        'main_widget_priority'         => $current_settings[ 'main_widget_priority' ] ?: 10,
+        'product_bottomline_hook'      => $current_settings[ 'product_bottomline_hook' ] ?: 'woocommerce_single_product_summary',
+        'product_bottomline_priority'  => $current_settings[ 'product_bottomline_priority' ] ?: 7,
+        'product_qna_hook'             => $current_settings[ 'product_qna_hook' ] ?: 'woocommerce_single_product_summary',
+        'product_qna_priority'         => $current_settings[ 'product_qna_priority' ] ?: 8,
+        'category_bottomline_hook'     => $current_settings[ 'category_bottomline_hook' ] ?: 'woocommerce_after_shop_loop_item',
+        'category_bottomline_priority' => $current_settings[ 'category_bottomline_priority' ] ?: 7,
+		'timeframe_from'               => $current_settings[ 'timeframe_from' ] ?: '90',
+        'timeframe_to'                 => $current_settings[ 'timeframe_to' ] ?: '0',
+        'order_submission_method'      => $_POST['order_submission_method'],
+    );
     update_option('yotpo_settings', $new_settings);
     if ($current_settings['disable_native_review_system'] != $new_settings['disable_native_review_system']) {
         if ($new_settings['disable_native_review_system'] == false) {
@@ -198,6 +209,11 @@ function wc_proccess_yotpo_settings() {
             update_option('woocommerce_enable_review_rating', 'no');
         }
     }
+	if ( $new_settings['order_submission_method'] == 'schedule' && !wp_next_scheduled( 'yotpo_scheduled_submission' ) )  {
+		wp_schedule_event( ( time() + ( 5 * 60 ) ), 'twicedaily', 'yotpo_scheduled_submission' );
+	} elseif ( $new_settings['order_submission_method'] != 'schedule' && wp_next_scheduled( 'yotpo_scheduled_submission' ) ) {
+		wp_clear_scheduled_hook( 'yotpo_scheduled_submission' );
+	}
 }
 function wc_display_yotpo_register() {
     $email = isset($_POST['yotpo_user_email']) ? $_POST['yotpo_user_email'] : '';
@@ -207,28 +223,28 @@ function wc_display_yotpo_register() {
 		<table class='form-table'>"
             . wp_nonce_field('yotpo_registration_form') .
             "<fieldset>
-			  <h2 class='y-register-title'>Fill out the form below and click register to get started with Yotpo.</h2></br></br>    
+			  <h2 class='y-register-title'>Fill out the form below and click register to get started with Yotpo.</h2></br></br>
 			  <tr valign='top'>
-			    <th scope='row'><div>Email address:</div></th>			 			  
+			    <th scope='row'><div>Email address:</div></th>
 			    <td><div><input type='text' name='yotpo_user_email' value='$email' /></div></td>
 			  </tr>
 			  <tr valign='top'>
-			    <th scope='row'><div>Name:</div></th>			 			  
+			    <th scope='row'><div>Name:</div></th>
 			    <td><div><input type='text' name='yotpo_user_name' value='$user_name' /></div></td>
 			  </tr>
 			  <tr valign='top'>
-			    <th scope='row'><div>Password:</div></th>			 			  
+			    <th scope='row'><div>Password:</div></th>
 			    <td><div><input type='password' name='yotpo_user_password' /></div></td>
 			  </tr>
 			  <tr valign='top'>
-			    <th scope='row'><div>Confirm password:</div></th>			 			  
+			    <th scope='row'><div>Confirm password:</div></th>
 			    <td><div><input type='password' name='yotpo_user_confirm_password' /></div></td>
 			  </tr>
 			  <tr valign='top'>
 			    <th scope='row'></th>
 			    <td><div><input type='submit' name='yotpo_register' value='Register' class='button-primary submit-btn' /></div></td>
-			  </tr>			  
-			</fieldset>			
+			  </tr>
+			</fieldset>
 			<table/>
 		</form>
 		<form method='post'>
@@ -278,7 +294,7 @@ function wc_proccess_yotpo_register() {
                         'utoken' => $response['response']['token'],
                         'platform_type_id' => 12));
                     if (!empty($response['status']) && !empty($response['status']['code']) && $response['status']['code'] == 200) {
-                        $current_settings = get_option('yotpo_settings', wc_yotpo_get_degault_settings());
+                        $current_settings = get_option('yotpo_settings', wc_yotpo_get_default_settings());
                         $current_settings['app_key'] = $app_key;
                         $current_settings['secret'] = $secret;
                         update_option('yotpo_settings', $current_settings);

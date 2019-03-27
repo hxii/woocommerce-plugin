@@ -2,8 +2,9 @@
 Contributors: Yotpo
 Tags: reviews, social reviews, woocommerce, woocommerce reviews, woocommerce product reviews, woocommerce extensions, woocommerce plugins, woocommerce addons, woocommerce add-ons, yotpo, yotpo reviews, yotpo social reviews
 Requires at least: 3.5.1
-Tested up to: 4.9.8
-Stable tag: 1.1.8
+Requires PHP: 5.6
+Tested up to: 5.2-alpha-44936
+Stable tag: 1.2.0
 License: GPLv2
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -30,8 +31,8 @@ Generate tons of product reviews for your Woocommerce site with Yotpo Social Rev
 
 To learn more about Yotpo head over to our website - [yotpo.com](http://www.yotpo.com/?utm_source=wordpress&utm_medium=description_link&utm_campaign=woocommerce_wordpress_page).
 To view a live demo of a store using our widget, head to [Carbonfibergear.com](http://store.carbonfibergear.com/3k-carbon-fiber-leather-wallet)
-To view a live demo of our admin panel, just login at [yotpo.com](http://www.yotpo.com/?utm_source=wordpress&utm_medium=description_link&utm_campaign=woocommerce_wordpress_page), with the following credentials: 
-Username: woocommerce@yotpo.com 
+To view a live demo of our admin panel, just login at [yotpo.com](http://www.yotpo.com/?utm_source=wordpress&utm_medium=description_link&utm_campaign=woocommerce_wordpress_page), with the following credentials:
+Username: woocommerce@yotpo.com
 Password: 123456
 
 http://www.youtube.com/watch?v=5yo6NVRm6mw
@@ -43,7 +44,6 @@ http://www.youtube.com/watch?v=5yo6NVRm6mw
 
 * WordPress 3.5.1 or greater
 * PHP version 5.2.0 or greater
-* WooCommerce 3.0 or greater
 
 1. Install Yotpo Social Reviews either via the WordPress.org plugin directory, or by uploading the files to your server
 2. After activating Yotpo Social Reviews, click on the Yotpo link in the left hand side bar of your Wordpress admin.
@@ -61,25 +61,25 @@ Yotpo is completely free and always will be.
 
 Yes, you can import your existing reviews to Yotpo. We have made this process very easy for you by allowing you to export your existing reviews straight from within the Yotpo plugin. For more information on how to import your existing reviews within Yotpo visit the following link: [Exporting reviews for Woocommerce](http://support.yotpo.com/entries/24454261-Exporting-reviews-for-Woocommerce)
 
-= Can I translate the Yotpo widget and the Mail After Purchase emails? = 
+= Can I translate the Yotpo widget and the Mail After Purchase emails? =
 
 We offer translation of our reviews widget and Mail After Purchase emails into many languages.
 
 To add more languages to the supported ones, please contact us at support@yotpo.com, and note the language you would like to have Yotpo translated to. This is a very easy process and we are happy to accomodate all languages.
 
-= How do I stop my reviews from automatically posting to my shop? I want to decide which reviews to publish and which to hide. = 
+= How do I stop my reviews from automatically posting to my shop? I want to decide which reviews to publish and which to hide. =
 
 To turn off auto publishing, just log into yotpo.com, and click on the "Moderate". On the "Moderate" page just uncheck the "Website" box, and reviews will no longer be automatically published. You'll be emailed each time you receive a new review, and be able to publish only the ones you'd like published.
 
-= New reviews don't automatically show up on my shop. How can I set my reviews to auto publish? = 
+= New reviews don't automatically show up on my shop. How can I set my reviews to auto publish? =
 
 To turn on auto publishing, just log into yotpo.com, and click on "Moderate". Here, on the left hand panel towards the bottom, just check the "Website" box, and reviews will now be automatically published.
 
-= How can I hide or delete a review? = 
+= How can I hide or delete a review? =
 
 To hide unwanted reviews, just log into your dashboard at yotpo.com, and click on "Moderate" from the options up top. Here you will be able to see all of your reviews. To hide a review, just click on the globe button with the down-pointing arrow. In addition, if you would like to delete reviews from your admin page, just click on the "archive" button. This acts as a full delete button.
 
-= Can I automatically post reviews to my business' social pages? = 
+= Can I automatically post reviews to my business' social pages? =
 
 Yes. To connect your social accounts to Yotpo, just log into yotpo.com, and click on "Campaigns" in the top menu bar. Click the "release feature" button and then on Social Sharing in the menu on the left hand side. Connect your social accounts and select Smart Auto Sharing from the drop down.
 
@@ -113,14 +113,14 @@ Yes. To connect your social accounts to Yotpo, just log into yotpo.com, and clic
 * Internal changes.
 
 = 1.0.8 - 25/02/2014 =
-* Change language code length. 
-* Mail After Purchase will be sent when order status is changing from a remote source.  
+* Change language code length.
+* Mail After Purchase will be sent when order status is changing from a remote source.
 
 = 1.1.1 - 15/05/2014 =
-* Bug fixes. 
+* Bug fixes.
 
 = 1.1.2 - 21/05/2014 =
-* Exporting reviews bug fix. 
+* Exporting reviews bug fix.
 
 = 1.1.3 - 02/06/2014 =
 * This version includes the latest version of Yotpo's Reviews Widget. It features an updated, cleaner UI, faster performance and more customization options.
@@ -150,4 +150,11 @@ Yes. To connect your social accounts to Yotpo, just log into yotpo.com, and clic
   * Custom order status into account when retrieving past orders.
   * Q&A bottom line in storefront and Yotpo settings.
  * Bug fixes.
-  
+
+ = 1.2.0 =
+ * Added support for:
+  * Wordpress 5.2
+  * WooCommerce 3.6
+ * Performance improvements.
+ * Scheduled order submission (WP Cron).
+ * Bug fixes.

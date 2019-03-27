@@ -98,41 +98,54 @@ class Yotpo_Review_Export
     }
 
     protected function getAllReviews() {   
-    	global $wpdb;
-		$query = "SELECT comment_post_ID AS product_id, 
-						 comment_author AS display_name, 
-						 comment_date AS date,
-						 comment_author_email AS user_email, 
-						 comment_content AS review_content, 
-						 meta_value AS review_score,
-						 post_content AS product_description,
-						 post_title AS product_title,
-						 user_id
-				  FROM `".$wpdb->prefix."comments` 
-				  INNER JOIN `".$wpdb->prefix."posts` ON `".$wpdb->prefix."posts`.`ID` = `".$wpdb->prefix."comments`.`comment_post_ID` 
-				  INNER JOIN `".$wpdb->prefix."commentmeta` ON `".$wpdb->prefix."commentmeta`.`comment_id` = `".$wpdb->prefix."comments`.`comment_ID` 
-				  WHERE `post_type` = 'product' AND meta_key='rating'";
-		$results = $wpdb->get_results($query);
-		$all_reviews = array();
-		foreach ($results as $value) {
-			$product_instance = get_product($value->product_id);
-			$current_review = array();	
-			$review_content = $this->cleanContent($value->review_content);	
-			$current_review['review_title'] = $this->getFirstWords($review_content);
-			$current_review['review_content'] = $review_content;
-			$current_review['display_name'] = $this->cleanContent($value->display_name);
-			$current_review['user_email'] = $value->user_email;
-			$current_review['user_type'] = woocommerce_customer_bought_product($value->user_email, $value->user_id, $value->product_id) ? 'verified_buyer' : '';
-			$current_review['review_score'] = $value->review_score;
-			$current_review['date'] = $value->date;
-			$current_review['sku'] = $value->product_id;
-			$current_review['product_title'] = $this->cleanContent($value->product_title);
-			$current_review['product_description'] = $this->cleanContent(get_post($value->product_id)->post_excerpt);
-			$current_review['product_url'] = get_permalink($value->product_id);
-			$current_review['product_image_url'] = wc_yotpo_get_product_image_url($value->product_id);
-			$all_reviews[] = $current_review;
-		}
-		return $all_reviews;
+        try {
+            global $wpdb;
+            $query_customers = "SELECT DISTINCT ".$wpdb->prefix."users.user_email
+            FROM `".$wpdb->prefix."postmeta`
+            INNER JOIN ".$wpdb->prefix."users on ".$wpdb->prefix."users.user_email = meta_value
+            WHERE meta_key = '_billing_email'
+            AND user_email != ''";
+            // $customerlist = $this->getCustomers();
+            $customerlist = $wpdb->get_results($query_customers, ARRAY_A) or die(mysqli_error());
+            ytdbg('CUSTOMERS: ' . $customerlist);
+            $query = "SELECT comment_post_ID AS product_id, 
+                             comment_author AS display_name, 
+                             comment_date AS date,
+                             comment_author_email AS user_email, 
+                             comment_content AS review_content, 
+                             meta_value AS review_score,
+                             post_content AS product_description,
+                             post_title AS product_title,
+                             user_id
+                      FROM `".$wpdb->prefix."comments` 
+                      INNER JOIN `".$wpdb->prefix."posts` ON `".$wpdb->prefix."posts`.`ID` = `".$wpdb->prefix."comments`.`comment_post_ID` 
+                      INNER JOIN `".$wpdb->prefix."commentmeta` ON `".$wpdb->prefix."commentmeta`.`comment_id` = `".$wpdb->prefix."comments`.`comment_ID` 
+                      WHERE `post_type` = 'product' AND meta_key='rating'";
+            $results = $wpdb->get_results($query);
+            $all_reviews = array();
+            foreach ($results as $value) {
+                $product_instance = get_product($value->product_id);
+                $current_review = array();  
+                $review_content = $this->cleanContent($value->review_content);  
+                $current_review['review_title'] = $this->getFirstWords($review_content);
+                $current_review['review_content'] = $review_content;
+                $current_review['display_name'] = $this->cleanContent($value->display_name);
+                $current_review['user_email'] = $value->user_email;
+                // $current_review['user_type'] = woocommerce_customer_bought_product($value->user_email, $value->user_id, $value->product_id) ? 'verified_buyer' : '';
+                $current_review['user_type'] = ( array_search( $value->user_email, $customerlist ) ) ? 'verified_buyer' : 'anonymous';
+                $current_review['review_score'] = $value->review_score;
+                $current_review['date'] = $value->date;
+                $current_review['sku'] = $value->product_id;
+                $current_review['product_title'] = $this->cleanContent($value->product_title);
+                $current_review['product_description'] = $this->cleanContent(get_post($value->product_id)->post_excerpt);
+                $current_review['product_url'] = get_permalink($value->product_id);
+                $current_review['product_image_url'] = wc_yotpo_get_product_image_url($value->product_id);
+                $all_reviews[] = $current_review;
+            }
+            return $all_reviews;
+        } catch (Exception $e) {
+            ytdbg($e);
+        }
     }  
 
     private function cleanContent($content) {
@@ -148,6 +161,15 @@ class Yotpo_Review_Export
     	else {
     		return join(" ",$words);
     	}
+    }
+
+    private function getCustomers() {
+        global $wpdb;
+        $query = "SELECT DISTINCT ".$wpdb->prefix."users.user_email FROM `".$wpdb->prefix."postmeta`
+            INNER JOIN ".$wpdb->prefix."users on ".$wpdb->prefix."users.user_email = meta_value
+            WHERE meta_key = '_billing_email'
+            AND user_email != '';";
+        return $wpdb->get_results($query);
     }
 }
 ?>
