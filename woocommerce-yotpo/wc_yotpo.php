@@ -24,12 +24,14 @@
     add_action( 'yotpo_scheduled_submission', 'wc_yotpo_send_scheduled_orders', 10, 1 );
     add_filter( 'woocommerce_tab_manager_integration_tab_allowed', 'wc_yotpo_disable_tab_manager_managment' );
     $yotpo_settings = get_option( 'yotpo_settings', wc_yotpo_get_default_settings() );
-    if ( $yotpo_settings['order_submission_method'] == 'hook' || !isset( $yotpo_settings['order_submission_method'] ) ) {
+    if ( $yotpo_settings['order_submission_method'] === 'hook' || !isset( $yotpo_settings['order_submission_method'] ) ) {
         add_action( 'woocommerce_order_status_changed', 'wc_yotpo_map', 99, 1 );
     }
     $product_image_map = array();
     $product_map = array();
     $currency = "";
+    require_once ( plugin_dir_path( __FILE__ ) . 'lib/hxii-log.php' );
+    $log = new HxiiLogger( '../yotpo_debug.log', 'debug' );
 
     // Make sure the plugin does not run in older versions of WooCommerce
     function ver_check() {
@@ -78,10 +80,10 @@
                     $export = new Yotpo_Review_Export();
                     list( $file, $errors ) = $export->exportReviews();
                     if ( is_null($errors) ) {
-                        ytdbg( $file, 'Reviews Export Success: ' );
+                        $log->info( "Reviews export successful: $file" );
                         $export->downloadReviewToBrowser( $file );
                     } else {
-                        ytdbg( $errors, 'Reviews Export Fail: ' );
+                        $log->debug( "Reviews export failed with $errors" );
                     }
                 }
                 exit;
@@ -125,9 +127,9 @@
                 add_filter( 'comments_open', 'wc_yotpo_remove_native_review_system', null, 2 );
             }
             $widget_location = $yotpo_settings['widget_location'];
-            if ( $widget_location == 'footer' ) {
+            if ( $widget_location === 'footer' ) {
                 add_action( $yotpo_settings['main_widget_hook'], 'wc_yotpo_show_widget', $yotpo_settings['main_widget_priority'] );
-            } elseif ( $widget_location == 'tab' ) {
+            } elseif ( $widget_location === 'tab' ) {
                 add_action( 'woocommerce_product_tabs', 'wc_yotpo_show_widget_in_tab' );
             }
             if ( $yotpo_settings['bottom_line_enabled_product'] ) {
@@ -174,7 +176,7 @@
     // Show main widget function
     function wc_yotpo_show_widget( $check = true ) {
         global $product;
-        $show_widget = is_product() ? $product->get_reviews_allowed() == true : true;
+        $show_widget = is_product() ? $product->get_reviews_allowed() === true : true;
         if ( $show_widget || !$check ) {
             $product_data = wc_yotpo_get_product_data( $product );
             echo '<div class="yotpo yotpo-main-widget"
@@ -205,7 +207,7 @@
     // Show Q&A bottomline function
     function wc_yotpo_show_qa_bottomline( $check = true ) {
         global $product;
-        $show_bottom_line = is_product() ? $product->get_reviews_allowed() == true : true;
+        $show_bottom_line = is_product() ? $product->get_reviews_allowed() === true : true;
         if ( $show_bottom_line || !$check ) {
             $product_data = wc_yotpo_get_product_data( wc_get_product() );
             echo '<div class="yotpo QABottomLine"
@@ -220,7 +222,7 @@
     }
     function wc_yotpo_show_bottomline( $check = true ) {
         global $product;
-        $show_bottom_line = is_product() ? $product->get_reviews_allowed() == true : true;
+        $show_bottom_line = is_product() ? $product->get_reviews_allowed() === true : true;
         if ( $show_bottom_line || !$check ) {
             $product_data = wc_yotpo_get_product_data( $product );
             echo '<div class="yotpo bottomLine"
@@ -252,20 +254,21 @@
     }
     // Disable WooCommerce review system
     function wc_yotpo_remove_native_review_system( $open, $post_id ) {
-        if ( get_post_type( $post_id ) == 'product' ) {
+        if ( get_post_type( $post_id ) === 'product' ) {
             return false;
         }
         return $open;
     }
     // Order submission
     function wc_yotpo_map( $order_id ) {
+        global $log;
         $order = wc_get_order( $order_id );
         $orderStatus = 'wc-' . $order->get_status();
         unset( $order );
         global $yotpo_settings;
-        ytdbg( ($orderStatus . ' should be ' . $yotpo_settings['yotpo_order_status'] ) , "Order #" . $order_id . " status changed to" );
-        if ( $orderStatus == $yotpo_settings['yotpo_order_status'] ) {
-            ytdbg( '', "Order #" . $order_id . " submission starting..." );
+        $log->debug( "Order #$order_id changed status to $orderStatus, should be $yotpo_settings[yotpo_order_status]" );
+        if ( $orderStatus === $yotpo_settings['yotpo_order_status'] ) {
+            $log->debug( "Starting submission of order #$order_id" );
             $secret = $yotpo_settings['secret'];
             $app_key = $yotpo_settings['app_key'];
             if ( !empty( $app_key ) && !empty( $secret ) && wc_yotpo_compatible() ) {
@@ -279,7 +282,7 @@
                             $purchase_data['utoken'] = $get_oauth_token_response['access_token'];
                             $purchase_data['platform'] = 'woocommerce';
                             $response = $yotpo_api->create_purchase( $purchase_data );
-                            ytdbg( $response['code'] . ' ' . $response['message'], "Order #" . $order_id . " Submitted with response");
+                            $log->info( "Order #$order_id submitted with response $response[code] - $response[message]" );
                         }
                     }
                 }
@@ -291,6 +294,7 @@
     }
     // Get info for single order
     function wc_yotpo_get_single_map_data( $order_id, $enable_map = true ) {
+        global $log;
         if ( $enable_map ) { global $product_map; }
         $order = wc_get_order( $order_id );
         $data = null;
@@ -308,26 +312,26 @@
             {
                 $data['email'] = $email;
             } else {
-                ytdbg( "($order_id - $email)", 'Order Dropped - Invalid Email' );
+                $log->info( "Order #$order_id Dropped - Invalid Email ($email)" );
                 return;
             }
             $name = $order->get_billing_first_name() . ' ' . $order->get_billing_last_name();
             if ( !empty( trim ( $name ) ) ) {
                 $data['customer_name'] = $name;
             } else {
-                ytdbg( "($order_id - $name)", 'Order Dropped - No Customer Name' );
+                $log->info( "Order #$order_id dropped - Invalid Name ($name)" );
                 return;
             }
             $data['order_id'] = $order_id;
             $data['currency_iso'] = wc_yotpo_get_order_currency( $order );
-            ytdbg( "Date: " . $data['order_date'] . " Email: " . $data['email'], "Order #" . $data['order_id'] );
+            $log->debug( "┌ Order #$data[order_id] Date: $data[order_date] Email: $data[email]" );
             if ( empty( $order->get_items() ) ) {
-                ytdbg( "($order_id)", 'Order Dropped - No Products' );
+                $log->info( "Order #$order_id dropped - No Products" );
                 return;
             }
             foreach ( $order->get_items() as $item ) {
-                if ( $item['product_id'] == "0" ) {
-                    ytdbg( "($order_id)", 'Order Dropped - Invalid product (ID of 0)' );
+                if ( $item['product_id'] === "0" ) {
+                    $log->info( "Order #$order_id dropped - Invalid Product (ID of 0)" );
                     return;
                 }
                 $parent_id = $item->get_product()->get_parent_id();
@@ -345,7 +349,7 @@
                         'name'        => $_product->get_name(),
                         'image'       => wc_yotpo_get_product_image_url( $product_id ),
                         'description' => '',
-                        'price'       => $item->get_product()->get_price(),
+                        'price'       => $_product->get_price() ?: 0,
                         'specs'       => array_filter( array(
                             'external_sku' => $_product->get_sku(),
                             'upc'          => $_product->get_attribute( 'upc' ) ?: null,
@@ -358,7 +362,8 @@
                     $product_data['price'] = $product_data['price'] * $quantity; // WIP - To be fixed
                     $products_arr[ $item['product_id'] ] = $product_data;
                 }
-                ytdbg( $product_data['name'] . ", Descr. length: " . strlen( $product_data['description'] ) . ", ID: " . $product_id . ", Specs: " . implode( ' / ', $product_data['specs'] ) . ", Price: " . $product_data['price'] . " " . $data['currency_iso'] . ", Quantity: " . $item['qty'], "\tProduct:", false );
+                $specs = implode( ' / ', $product_data['specs'] ) ;
+                $log->debug( "└ Product: $product_data[name], ID: $product_id, Specs: ". implode( ' / ', $product_data['specs'] ) .", Price: $product_data[price] $data[currency_iso], Quantity: $item[qty]" );
             }
             $data['products'] = $products_arr;
         }
@@ -377,6 +382,7 @@
     }
     // Query for past orders
     function wc_yotpo_get_past_orders( $schedule = false ) {
+        global $log;
         global $yotpo_settings;
         global $product_image_map;
         global $product_map;
@@ -387,7 +393,7 @@
             $timeframe_from = date( 'Y-m-d', strtotime( '-' . $yotpo_settings['timeframe_from'] . ' days' ) );
             $timeframe_to = $yotpo_settings['timeframe_to'] != 0 ? date( 'Y-m-d', strtotime( '-' . $yotpo_settings['timeframe_to'] . ' days' ) ) : date( 'Y-m-d' );
         }
-        ytdbg('', 'Time frame is from ' . $timeframe_from . ' to ' . $timeframe_to );
+        $log->debug( "Timeframe is from $timeframe_from to $timeframe_to" );
         $result = null;
         $args = array(
             'limit'          => -1,
@@ -398,7 +404,7 @@
         );
         $query = new WC_Order_Query( $args );
         $orders = $query->get_orders();
-        ytdbg('', 'Got ' . count( $orders ) . ' orders');
+        $log->debug( "Got ". count( $orders ). " orders" );
         $past_orders = array();
         foreach ( $orders as $order_id ) {
             $order_data = wc_yotpo_get_single_map_data( $order_id );
@@ -422,37 +428,39 @@
     }
     function wc_yotpo_send_scheduled_orders() {
         global $yotpo_settings;
+        global $log;
         require_once ( plugin_dir_path( __FILE__ ) . 'lib/yotpo-api/Yotpo.php' );
-        ytdbg('', 'Starting scheduled order submission ----------------------------------------------------------');
+        $log->debug( "STARTING SCHEDULED ORDER SUBMISSION" );
         $past_orders = wc_yotpo_get_past_orders( true );
         if ( !is_null( $past_orders ) && is_array( $past_orders ) ) {
-            ytdbg('', $yotpo_settings['app_key'] . " - " . $yotpo_settings['secret']);
+            $log->debug( "Appkey: $yotpo_settings[app_key] Secret: $yotpo_settings[secret]" );
             $yotpoapi = new Yotpo( $yotpo_settings['app_key'], $yotpo_settings['secret'] );
             $get_oauth_token_response = $yotpoapi->get_oauth_token();
-            ytdbg('', "TOKEN " . $get_oauth_token_response['access_token']);
+            $log->debug( "Token: $get_oauth_token_response[access_token]" );
             if ( !empty( $get_oauth_token_response ) && !empty( $get_oauth_token_response['access_token'] ) ) {
                 foreach ( $past_orders as $index => $post_bulk ) if ( !is_null( $post_bulk ) ) {
                     $post_bulk['utoken'] = $get_oauth_token_response['access_token'];
                     $response = $yotpoapi->create_purchases( $post_bulk );
-                    ytdbg( $response['code'] . " " . $response['message'], "\tBatch " . ($index + 1) . " sent with response" );
+                    $log->debug( "Batch #".($index+1)." sent with response $response[code] - $response[message]" );
                     $post_bulk = null;
                 }
             }
         }
-        ytdbg('', 'Finishing scheduled order submission ----------------------------------------------------------');
+        $log->debug( "FINISHING SCHEDULED ORDER SUBMISSION" );
     }
     // Past order submission
     function wc_yotpo_send_past_orders() {
+        global $log;
         // Script start
-        set_time_limit( 120 );
+        // set_time_limit( 120 );
         $rustart = getrusage();
-        ytdbg( '', 'Submit Past Orders Start -------------------------------------------------------------------' );
+        $log->debug( "STARTING PAST ORDER SUBMISSION" );
         $startMemory = (memory_get_usage() / 1024);
-        ytdbg('', "Memory usage at start is $startMemory KB");
+        $log->debug( "Memory usage at start is $startMemory KB" );
         global $yotpo_settings;
         if ( !empty( $yotpo_settings['app_key'] ) && !empty( $yotpo_settings['secret'] ) ) {
             $past_orders = wc_yotpo_get_past_orders();
-            ytdbg( "", "\tGot " . count( $past_orders ) . " batches, sending..." );
+            $log->debug( "Got " .count( $past_orders ). " bacthes, sending..." );
             $is_success = true;
             if ( !is_null( $past_orders ) && is_array( $past_orders ) ) {
                 $yotpo_api = new Yotpo( $yotpo_settings['app_key'], $yotpo_settings['secret'] );
@@ -462,19 +470,19 @@
                         $post_bulk['utoken'] = $get_oauth_token_response['access_token'];
                         $response = $yotpo_api->create_purchases( $post_bulk );
                         if ( $response['code'] != 200 && $is_success ) {
-                            ytdbg( $response, "\tSending Past Orders failed for batch" . $index . " :" );
+                            $log->debug( "Batch " .($index+1). " failed with response \r\n $response" );
                             $is_success = false;
                             $message = !empty( $response['status'] ) && !empty( $response['status']['message'] ) ? $response['status']['message'] : 'Error occurred';
                             wc_yotpo_display_message( $message, true );
                         } else {
-                            ytdbg( $response['code'] . " " . $response['message'], "\tBatch " . ($index + 1) . " sent successfully with response" );
+                            $log->debug( "Batch " .($index+1). " sent successfully with response $response[code] - $response[message]" );
                         }
                         $post_bulk = null;
                     }
                     if ( $is_success ) {
                         wc_yotpo_display_message( 'Past orders sent successfully', false );
-                        ytdbg( '', 'Memory usage at end is ' . ( ( memory_get_usage() / 1024 ) - $startMemory) . "KB");
-                        ytdbg( '', 'Submit Past Orders End -------------------------------------------------------------------' );
+                        $log->debug( "Memory usage at end is ". ( ( memory_get_usage() / 1024 ) - $startMemory) . "KB" );
+                        $log->debug( "FINISHING PAST ORDER SUBMISSION" );
                         $yotpo_settings['show_submit_past_orders'] = false;
                         update_option( 'yotpo_settings', $yotpo_settings );
                     }
@@ -491,10 +499,8 @@
              -  ($rus["ru_$index.tv_sec"]*1000 + intval($rus["ru_$index.tv_usec"]/1000));
         }
         $ru = getrusage();
-        ytdbg('',"This process used " . rutime($ru, $rustart, "utime") .
-            " ms for its computations");
-        ytdbg('',"It spent " . rutime($ru, $rustart, "stime") .
-            " ms in system calls");
+        $log->debug( "This process used ". rutime($ru, $rustart, "utime") ."ms for it's computations" );
+        $log->debug( "It spent ". rutime($ru, $rustart, "stime") ."ms in system calls" );
     }
     // Conversion tracking code
     function wc_yotpo_conversion_track( $order_id ) {
@@ -545,9 +551,9 @@
     // WIP - Post plugin update actions
     function wc_yotpo_post_update( $upgrader_object, $options ) {
         $yotpo = plugin_basename( __FILE__ );
-        if ( $options['action'] == 'update' && $options['type'] == 'plugin' ){
+        if ( $options['action'] === 'update' && $options['type'] === 'plugin' ){
             foreach( $options['plugins'] as $plugin ) {
-                if( $plugin == $yotpo ) {
+                if( $plugin === $yotpo ) {
                     set_transient( 'yotpo_plugin_updated', 1 );
                 }
             }
@@ -570,7 +576,7 @@
     }
     // Enqueue all styles
     function wc_yotpo_admin_styles( $hook ) {
-        if ( $hook == 'toplevel_page_woocommerce-yotpo-settings-page' ) {
+        if ( $hook === 'toplevel_page_woocommerce-yotpo-settings-page' ) {
             wp_enqueue_script( 'yotpoSettingsJs', plugins_url( 'assets/js/settings.js', __FILE__ ) , array(
                 'jquery-effects-core'
             ) );
@@ -588,7 +594,7 @@
         update_option( 'woocommerce_enable_review_rating', get_option( 'native_star_ratings_enabled' ) );
     }
     function wc_yotpo_disable_tab_manager_managment( $allowed, $tab = null ) {
-        if ( $tab == 'yotpo_widget' ) {
+        if ( $tab === 'yotpo_widget' ) {
             $allowed = false;
             return false;
         }
@@ -603,26 +609,10 @@
         // }
         return empty( $currency ) ? get_woocommerce_currency() : $currency;
     }
-    function ytdbg( $msg, $name = '', $date = true ) {
-        global $yotpo_settings;
-        if ( !$yotpo_settings['debug_mode'] ) { return; }
-        //$trace = debug_backtrace();
-        //$name = ( '' == $name ) ? $trace[1]['function'] : $name;
-        $error_dir = plugin_dir_path( __FILE__ ) . "yotpo_debug.log";
-        $msg = print_r( $msg, true );
-        if ( $date ) {
-            $log = "[" . date( "m/d/Y @ g:i:sA", time() ) . "] " . $name . ' ' . $msg . "\n";
-        } else {
-            $log = $name . ' ' . $msg . "\n";
-        }
-        $fh = fopen( $error_dir, 'a+' );
-        fwrite( $fh, $log );
-        fclose( $fh );
-    }
     ob_start( 'fatal_error_handler' );
     function fatal_error_handler( $buffer ) {
         $error = error_get_last();
-        if ( $error['type'] == 1 ) {
+        if ( $error['type'] === 1 ) {
             $newBuffer = '<html><header><title>Fatal Error </title></header>
                         <style>
                         .error_content{
