@@ -4,7 +4,7 @@
  * hxiilog
  * very simple, constantly evolving logger class for stuff and things
  * by Paul Glushak aka hxii
- * v. 0.1
+ * v. 0.2
  * http://github.com/hxii/
  */
 
