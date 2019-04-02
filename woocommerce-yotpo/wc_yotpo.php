@@ -18,7 +18,7 @@
     //register_uninstall_hook( __FILE__, 'wc_yotpo_uninstall' );
     register_deactivation_hook( __FILE__, 'wc_yotpo_deactivate' );
     add_action( 'init', 'wc_yotpo_redirect' );
-    add_action( 'woocommerce_loaded', 'ver_check' );
+    add_action( 'plugins_loaded', 'ver_check', 10 );
     add_action( 'upgrader_process_complete', 'wc_yotpo_post_update', 10, 2 );
     add_action( 'admin_notices', 'wc_yotpo_check_settings' );
     add_action( 'yotpo_scheduled_submission', 'wc_yotpo_send_scheduled_orders', 10, 1 );
@@ -31,7 +31,7 @@
     $product_map = array();
     $currency = "";
     require_once ( plugin_dir_path( __FILE__ ) . 'lib/hxii-log.php' );
-    $log = new HxiiLogger( '../yotpo_debug.log', 'debug' );
+    $log = new HxiiLogger( plugin_dir_path( __FILE__ ) . 'yotpo_debug.log', 'debug' );
 
     // Make sure the plugin does not run in older versions of WooCommerce
     function ver_check() {
@@ -44,7 +44,7 @@
         $woo_ver = $woocommerce->version;
         $woo_req_ver = '3.1.0';
         if ( version_compare( $woo_ver, $woo_req_ver, ">=" ) && version_compare( phpversion() , '5.6.0', '>=' ) ) {
-            add_action( 'plugins_loaded', 'wc_yotpo_init' );
+            wc_yotpo_init();
         } elseif ( version_compare( phpversion() , '5.6.0', '<' ) ) {
             function yotpo_php_warn() {
                 ?>
@@ -319,19 +319,19 @@
             if ( !empty( trim ( $name ) ) ) {
                 $data['customer_name'] = $name;
             } else {
-                $log->info( "Order #$order_id dropped - Invalid Name ($name)" );
+                $log->info( "Order #$order_id Dropped - Invalid Name ($name)" );
                 return;
             }
             $data['order_id'] = $order_id;
             $data['currency_iso'] = wc_yotpo_get_order_currency( $order );
             $log->debug( "┌ Order #$data[order_id] Date: $data[order_date] Email: $data[email]" );
             if ( empty( $order->get_items() ) ) {
-                $log->info( "Order #$order_id dropped - No Products" );
+                $log->info( "Order #$order_id Dropped - No Products" );
                 return;
             }
             foreach ( $order->get_items() as $item ) {
-                if ( $item['product_id'] === "0" ) {
-                    $log->info( "Order #$order_id dropped - Invalid Product (ID of 0)" );
+                if ( $item['product_id'] == "0" ) {
+                    $log->info( "Order #$order_id Dropped - Invalid Product (ID of 0)" );
                     return;
                 }
                 $parent_id = $item->get_product()->get_parent_id();
@@ -460,7 +460,7 @@
         global $yotpo_settings;
         if ( !empty( $yotpo_settings['app_key'] ) && !empty( $yotpo_settings['secret'] ) ) {
             $past_orders = wc_yotpo_get_past_orders();
-            $log->debug( "Got " .count( $past_orders ). " bacthes, sending..." );
+            $log->debug( "Got " .count( $past_orders ). " batches, sending..." );
             $is_success = true;
             if ( !is_null( $past_orders ) && is_array( $past_orders ) ) {
                 $yotpo_api = new Yotpo( $yotpo_settings['app_key'], $yotpo_settings['secret'] );
